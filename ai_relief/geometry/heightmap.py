@@ -7,18 +7,26 @@ class HeightmapGenerator:
     def __init__(self):
         pass
 
-    def generate(self, optimized_depth: np.ndarray) -> np.ndarray:
+    def generate(self, optimized_depth: np.ndarray, smoothing_mode: str = "Sharp & Crisp (Bilateral)") -> np.ndarray:
         """
-        Converts the normalized 0-1 optimized depth map into a physical heightmap 
-        scaled to the maximum relief depth (in mm). Applies anti-aliasing.
+        Converts the normalized 0-1 depth map into a physical heightmap scaled 
+        to the maximum relief depth (in mm). Applies selectable edge-preserving smoothing.
         """
-        logging.info(f"Generating heightmap with max depth of {settings.relief_max_depth_mm}mm.")
+        logging.info(f"Generating heightmap (Max Depth: {settings.relief_max_depth_mm}mm, Mode: '{smoothing_mode}').")
         
-        # Apply a very slight Gaussian blur to act as anti-aliasing for the 3D mesh.
-        # This prevents pixel-level "stair-stepping" artifacts on high-resolution 3D prints.
-        smoothed = cv2.GaussianBlur(optimized_depth, (3, 3), 0.5)
-        
-        # Scale the normalized 0.0 - 1.0 range directly into physical millimeters
+        depth_float = optimized_depth.astype(np.float32)
+
+        if "bilateral" in smoothing_mode.lower() or "sharp" in smoothing_mode.lower():
+            # Bilateral filter preserves sharp structural edges while smoothing out noise
+            smoothed = cv2.bilateralFilter(depth_float, d=5, sigmaColor=0.08, sigmaSpace=3.0)
+        elif "smooth" in smoothing_mode.lower():
+            # Soft anti-aliased Gaussian smoothing
+            smoothed = cv2.GaussianBlur(depth_float, (3, 3), 0.5)
+        else:
+            # Raw / Unfiltered
+            smoothed = depth_float
+
+        # Scale normalized [0.0, 1.0] range into physical millimeters
         heightmap_mm = smoothed * settings.relief_max_depth_mm
         
         return heightmap_mm
