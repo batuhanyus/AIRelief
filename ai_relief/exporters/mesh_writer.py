@@ -149,6 +149,8 @@ class MeshExporter:
         
         if file_ext == "glb":
             mesh.export(output_path, file_type="glb")
+        elif file_ext == "stl":
+            mesh.export(output_path, file_type="stl")
         else:
             mesh.export(output_path)
             

@@ -105,23 +105,33 @@ def process_image(
     }
     target_grid_dim = res_map.get(mesh_resolution, 512)
 
-    # 6. Export to a temporary GLB file for Gradio
+    # 6. Export to temporary GLB (for 3D viewer) and STL (for 3D printing download) files
     temp_dir = tempfile.mkdtemp()
-    output_path = os.path.join(temp_dir, "output.glb")
+    output_glb_path = os.path.join(temp_dir, "bas_relief.glb")
+    output_stl_path = os.path.join(temp_dir, "bas_relief.stl")
     
     try:
+        # Export GLB with preview material finish
         exporter.export(
             heightmap=heightmap, 
-            output_path=output_path, 
+            output_path=output_glb_path, 
             image_np=image_np, 
             preview_style=preview_style,
             max_grid_dim=target_grid_dim
         )
+        # Export STL file for 3D printing
+        exporter.export(
+            heightmap=heightmap,
+            output_path=output_stl_path,
+            image_np=image_np,
+            preview_style=preview_style,
+            max_grid_dim=target_grid_dim
+        )
         grid_desc = f"{target_grid_dim}px grid" if target_grid_dim else "Native image resolution grid"
-        return output_path, f"Success! 3D Model Generated at {grid_desc} using '{preview_style}' material on {settings.get_device_info()}."
+        return output_glb_path, [output_stl_path, output_glb_path], f"Success! 3D Model & STL Export Generated at {grid_desc} using '{preview_style}' material on {settings.get_device_info()}."
     except Exception as e:
         logging.error(f"Error generating mesh: {e}", exc_info=True)
-        return None, f"Error generating mesh: {str(e)}"
+        return None, None, f"Error generating mesh: {str(e)}"
 
 # Define the Gradio Interface
 with gr.Blocks(title="AI Relief") as demo:
@@ -192,6 +202,10 @@ with gr.Blocks(title="AI Relief") as demo:
                 label="3D Preview (Interactable)", 
                 clear_color=(0.14, 0.15, 0.18, 1.0)
             )
+            download_file = gr.File(
+                label="Download 3D Model (.stl / .glb)",
+                file_count="multiple"
+            )
             
     submit_btn.click(
         fn=process_image,
@@ -208,7 +222,7 @@ with gr.Blocks(title="AI Relief") as demo:
             preview_style,
             device_setting
         ],
-        outputs=[output_model, status_text]
+        outputs=[output_model, download_file, status_text]
     )
 
 if __name__ == "__main__":
