@@ -35,7 +35,7 @@ def load_models():
 # Attempt initial load
 models_loaded = load_models()
 
-def process_image(image_path, max_depth, base_thickness, detail_strength):
+def process_image(image_path, max_depth, base_thickness, detail_strength, remove_background):
     if not models_loaded:
         return None, "Error: Models failed to load. Check your weights directory."
         
@@ -47,16 +47,19 @@ def process_image(image_path, max_depth, base_thickness, detail_strength):
     settings.relief_max_depth_mm = max_depth
     settings.base_thickness_mm = base_thickness
     
+    image = Image.open(image_path).convert("RGB")
+    image_np = np.array(image)
+
     # 1. Depth Estimation
     raw_depth = depth_estimator.estimate_depth(image_path)
     
-    # 2. Segmentation
-    mask = segmenter.segment_foreground(image_path)
+    # 2. Segmentation / Masking
+    if remove_background:
+        mask = segmenter.segment_foreground(image_path)
+    else:
+        mask = np.ones(image_np.shape[:2], dtype=np.uint8)
     
     # 3. Enhancement
-    image = Image.open(image_path).convert("RGB")
-    image_np = np.array(image)
-    
     enhanced_depth = face_enhancer.enhance_faces(image_np, raw_depth, enhancement_strength=detail_strength)
     enhanced_depth = hair_enhancer.enhance_hair_details(image_np, enhanced_depth, mask, enhancement_strength=detail_strength)
     
@@ -92,6 +95,7 @@ with gr.Blocks(title="AI Relief") as demo:
             with gr.Accordion("Geometry Settings", open=True):
                 max_depth = gr.Slider(minimum=1.0, maximum=20.0, value=5.0, step=0.5, label="Max Relief Depth (mm)")
                 base_thickness = gr.Slider(minimum=0.5, maximum=10.0, value=2.0, step=0.5, label="Base Thickness (mm)")
+                remove_background = gr.Checkbox(label="Remove Background (Isolate Subject)", value=False)
                 
             with gr.Accordion("Enhancement Settings", open=True):
                 detail_strength = gr.Slider(minimum=0.0, maximum=1.0, value=0.5, step=0.1, label="Facial & Hair Detail Strength")
@@ -104,7 +108,7 @@ with gr.Blocks(title="AI Relief") as demo:
             
     submit_btn.click(
         fn=process_image,
-        inputs=[input_image, max_depth, base_thickness, detail_strength],
+        inputs=[input_image, max_depth, base_thickness, detail_strength, remove_background],
         outputs=[output_model, status_text]
     )
 

@@ -23,8 +23,11 @@ class MeshExporter:
         y = np.linspace(0, h * scale, h)
         X, Y = np.meshgrid(x, y)
         
+        # Flip heightmap vertically so row 0 (top of 2D image) aligns with maximum Y (top of 3D frame)
+        heightmap_flipped = np.flipud(heightmap)
+        
         # Z coordinates include the base thickness
-        Z = heightmap + settings.base_thickness_mm
+        Z = heightmap_flipped + settings.base_thickness_mm
         
         # Create vertices
         top_vertices = np.column_stack((X.flatten(), Y.flatten(), Z.flatten()))

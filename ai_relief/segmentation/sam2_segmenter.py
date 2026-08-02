@@ -61,10 +61,6 @@ class SAM2Segmenter:
             )
             return masks[0].astype(np.uint8)
         else:
-            # Dummy Mask: Extract the middle 50% for testing purposes
+            # Full image mask: Return 1s everywhere so full frame is preserved without cropping
             height, width = image_np.shape[:2]
-            mask = np.zeros((height, width), dtype=np.uint8)
-            h_margin = int(height * 0.25)
-            w_margin = int(width * 0.25)
-            mask[h_margin:-h_margin, w_margin:-w_margin] = 1
-            return mask
+            return np.ones((height, width), dtype=np.uint8)
