@@ -35,7 +35,7 @@ def load_models():
 # Attempt initial load
 models_loaded = load_models()
 
-def process_image(image_path, max_depth, base_thickness, detail_strength, remove_background):
+def process_image(image_path, max_depth, base_thickness, detail_strength, remove_background, preview_style):
     if not models_loaded:
         return None, "Error: Models failed to load. Check your weights directory."
         
@@ -69,15 +69,20 @@ def process_image(image_path, max_depth, base_thickness, detail_strength, remove
     # 5. Geometry
     heightmap = heightmap_gen.generate(compressed_depth)
     
-    # 6. Export to a temporary OBJ file for Gradio
-    # Gradio's Model3D supports OBJ natively for browser viewing
+    # 6. Export to a temporary GLB file for Gradio (supports rich vertex colors and material shading)
     temp_dir = tempfile.mkdtemp()
-    output_path = os.path.join(temp_dir, "output.obj")
+    output_path = os.path.join(temp_dir, "output.glb")
     
     try:
-        exporter.export(heightmap, output_path)
-        return output_path, "Success! 3D Model Generated."
+        exporter.export(
+            heightmap=heightmap, 
+            output_path=output_path, 
+            image_np=image_np, 
+            preview_style=preview_style
+        )
+        return output_path, f"Success! 3D Model Generated using '{preview_style}' material."
     except Exception as e:
+        logging.error(f"Error generating mesh: {e}", exc_info=True)
         return None, f"Error generating mesh: {str(e)}"
 
 # Define the Gradio Interface
@@ -97,18 +102,40 @@ with gr.Blocks(title="AI Relief") as demo:
                 base_thickness = gr.Slider(minimum=0.5, maximum=10.0, value=2.0, step=0.5, label="Base Thickness (mm)")
                 remove_background = gr.Checkbox(label="Remove Background (Isolate Subject)", value=False)
                 
-            with gr.Accordion("Enhancement Settings", open=True):
+            with gr.Accordion("Enhancement & Visualization Settings", open=True):
                 detail_strength = gr.Slider(minimum=0.0, maximum=1.0, value=0.5, step=0.1, label="Facial & Hair Detail Strength")
+                preview_style = gr.Dropdown(
+                    choices=[
+                        "Clay Sculpture",
+                        "Original Photo",
+                        "Antique Bronze",
+                        "White Marble",
+                        "Gold Medallion",
+                        "Detail Inspector"
+                    ],
+                    value="Clay Sculpture",
+                    label="3D Preview Material / Finish"
+                )
                 
             submit_btn = gr.Button("Generate Bas-Relief", variant="primary")
             status_text = gr.Textbox(label="Status", interactive=False)
             
         with gr.Column():
-            output_model = gr.Model3D(label="3D Preview (Interactable)", clear_color=(0.9, 0.9, 0.9, 1.0))
+            output_model = gr.Model3D(
+                label="3D Preview (Interactable)", 
+                clear_color=(0.14, 0.15, 0.18, 1.0)
+            )
             
     submit_btn.click(
         fn=process_image,
-        inputs=[input_image, max_depth, base_thickness, detail_strength, remove_background],
+        inputs=[
+            input_image, 
+            max_depth, 
+            base_thickness, 
+            detail_strength, 
+            remove_background, 
+            preview_style
+        ],
         outputs=[output_model, status_text]
     )
 
