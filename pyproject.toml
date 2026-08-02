@@ -1,0 +1,35 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "ai-relief"
+version = "0.1.0"
+description = "Convert a single 2D photograph into a high-quality, printable bas-relief 3D model."
+authors = ["Your Name <your.email@example.com>"]
+packages = [{include = "ai_relief"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+torch = "*"
+torchvision = "*"
+opencv-python = "^4.8.0"
+numpy = "^1.24.0"
+Pillow = "^10.0.0"
+trimesh = "^4.0.0"
+gradio = "^4.0.0"
+fastapi = "<0.110.0"
+starlette = "<0.36.0"
+transformers = "^4.35.0"
+huggingface-hub = "^0.19.0"
+mediapipe = "0.10.14"
+typer = {extras = ["all"], version = "^0.9.0"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.7.0"
+isort = "^5.12.0"
+mypy = "^1.5.0"
+
+[tool.poetry.scripts]
+ai-relief = "ai_relief.cli.main:app"
