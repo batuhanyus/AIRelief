@@ -51,19 +51,20 @@ class FaceEnhancer:
             face_img_region = image_np[y_min:y_max, x_min:x_max]
             face_depth_region = enhanced_depth[y_min:y_max, x_min:x_max]
             
-            # Extract high frequency details from the luminance of the original image
-            gray_face = cv2.cvtColor(face_img_region, cv2.COLOR_RGB2GRAY)
-            
-            # Apply unsharp masking to extract details
+            # Extract high frequency details using zero-mean floating-point difference
+            gray_face = cv2.cvtColor(face_img_region, cv2.COLOR_RGB2GRAY).astype(np.float32) / 255.0
             blurred_face = cv2.GaussianBlur(gray_face, (0, 0), 3)
-            high_freq = cv2.subtract(gray_face, blurred_face)
+            high_freq = gray_face - blurred_face
             
-            # Normalize high frequency to a small range (e.g., -0.05 to 0.05) to add to normalized depth map
-            high_freq_norm = (high_freq.astype(np.float32) / 255.0) - 0.5
-            high_freq_norm *= enhancement_strength
+            # Create a smooth 2D Hann window feather mask to prevent sharp bounding box lines
+            bh, bw = y_max - y_min, x_max - x_min
+            win_y = np.hanning(bh) if bh > 1 else np.ones(bh)
+            win_x = np.hanning(bw) if bw > 1 else np.ones(bw)
+            feather_mask = np.outer(win_y, win_x).astype(np.float32)
             
-            # Add details to depth map
-            face_depth_region = face_depth_region + high_freq_norm
+            # Apply feathered detail enhancement
+            detail_to_add = high_freq * feather_mask * enhancement_strength
+            face_depth_region = face_depth_region + detail_to_add
             
             # Clip back to 0-1 range
             face_depth_region = np.clip(face_depth_region, 0.0, 1.0)

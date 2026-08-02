@@ -19,29 +19,29 @@ class HairEnhancer:
 
         enhanced_depth = depth_map.copy()
         
-        # Convert original image to grayscale for detail extraction
-        gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
+        # Convert original image to grayscale float for detail extraction
+        gray_float = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY).astype(np.float32) / 255.0
         
-        # Use a high-pass filter (Original - Blurred) to get fine details
-        blurred = cv2.GaussianBlur(gray, (0, 0), 2)
-        high_pass = cv2.subtract(gray, blurred)
-        
-        # Normalize high frequencies around 0
-        high_pass_norm = (high_pass.astype(np.float32) / 255.0) - 0.5
+        # Use a high-pass filter (Original - Blurred) to get fine zero-mean details
+        blurred_float = cv2.GaussianBlur(gray_float, (0, 0), 2)
+        high_pass = gray_float - blurred_float
         
         # We only want to apply this strongly to areas with high texture (like hair).
         # We can use Canny edge detection to create a "texture activity" map.
-        edges = cv2.Canny(gray, 100, 200)
+        gray_uint8 = (gray_float * 255.0).astype(np.uint8)
+        edges = cv2.Canny(gray_uint8, 100, 200)
         # Blur the edges so the enhancement applies smoothly around textured areas, not just strictly on the edge pixel
         texture_mask = cv2.GaussianBlur(edges, (5, 5), 0).astype(np.float32) / 255.0
         
         # Ensure mask is 0-1 float
         if mask.dtype == np.uint8:
-            mask = mask.astype(np.float32)
+            mask_float = mask.astype(np.float32)
+        else:
+            mask_float = mask
             
         # Apply the details:
         # Details * Texture Mask (only applied where it's actually textured) * Subject Mask (only on foreground) * Strength
-        final_detail = high_pass_norm * texture_mask * mask * enhancement_strength
+        final_detail = high_pass * texture_mask * mask_float * enhancement_strength
         
         enhanced_depth += final_detail
         
