@@ -35,14 +35,17 @@ def load_models():
 # Attempt initial load
 models_loaded = load_models()
 
-def process_image(image_path, max_depth, base_thickness, detail_strength, remove_background, preview_style):
+def process_image(image_path, max_depth, base_thickness, detail_strength, remove_background, preview_style, device_setting):
     if not models_loaded:
         return None, "Error: Models failed to load. Check your weights directory."
         
     if image_path is None:
         return None, "Please upload an image."
 
-    logging.info("Starting pipeline...")
+    dev_map = {"Auto (GPU if available)": "auto", "CUDA (GPU)": "cuda", "CPU": "cpu"}
+    settings.device = dev_map.get(device_setting, "auto")
+    
+    logging.info(f"Starting pipeline on device: {settings.get_device_info()}...")
     # Update settings
     settings.relief_max_depth_mm = max_depth
     settings.base_thickness_mm = base_thickness
@@ -80,7 +83,7 @@ def process_image(image_path, max_depth, base_thickness, detail_strength, remove
             image_np=image_np, 
             preview_style=preview_style
         )
-        return output_path, f"Success! 3D Model Generated using '{preview_style}' material."
+        return output_path, f"Success! 3D Model Generated using '{preview_style}' material on {settings.get_device_info()}."
     except Exception as e:
         logging.error(f"Error generating mesh: {e}", exc_info=True)
         return None, f"Error generating mesh: {str(e)}"
@@ -97,6 +100,14 @@ with gr.Blocks(title="AI Relief") as demo:
         with gr.Column():
             input_image = gr.Image(type="filepath", label="Input Photo")
             
+            with gr.Accordion("Hardware & Device Settings", open=True):
+                device_setting = gr.Dropdown(
+                    choices=["Auto (GPU if available)", "CUDA (GPU)", "CPU"],
+                    value="Auto (GPU if available)",
+                    label="Compute Hardware Device"
+                )
+                device_info_box = gr.Markdown(f"**Active Hardware:** {settings.get_device_info()}")
+
             with gr.Accordion("Geometry Settings", open=True):
                 max_depth = gr.Slider(minimum=1.0, maximum=20.0, value=5.0, step=0.5, label="Max Relief Depth (mm)")
                 base_thickness = gr.Slider(minimum=0.5, maximum=10.0, value=2.0, step=0.5, label="Base Thickness (mm)")
@@ -134,7 +145,8 @@ with gr.Blocks(title="AI Relief") as demo:
             base_thickness, 
             detail_strength, 
             remove_background, 
-            preview_style
+            preview_style,
+            device_setting
         ],
         outputs=[output_model, status_text]
     )

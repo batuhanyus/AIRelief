@@ -10,7 +10,7 @@ def process(
     output_mesh: Path = typer.Argument(..., file_okay=True, dir_okay=False, resolve_path=True, help="Path to save the output 3D mesh (e.g. output.stl)"),
     max_depth: float = typer.Option(5.0, help="Maximum thickness of the relief in mm"),
     base_thickness: float = typer.Option(2.0, help="Thickness of the solid base in mm"),
-    device: str = typer.Option("cpu", help="Device to use for inference (cuda, mps, cpu)")
+    device: str = typer.Option("auto", help="Device to use for inference (auto, cuda, mps, cpu)")
 ):
     """
     Process a single image into a 3D bas-relief mesh.

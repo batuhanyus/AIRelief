@@ -6,12 +6,7 @@ from ai_relief.config.settings import settings
 
 class SAM2Segmenter:
     def __init__(self):
-        self.device = "cpu"
-        if settings.device == "cuda" and torch.cuda.is_available():
-            self.device = "cuda"
-        elif settings.device == "mps" and torch.backends.mps.is_available():
-            self.device = "mps"
-            
+        self.device = settings.get_resolved_device()
         logging.info(f"Loading SAM 2 from {settings.sam2_model_path} onto {self.device}")
         
         try:
