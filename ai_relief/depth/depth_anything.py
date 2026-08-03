@@ -24,16 +24,19 @@ class DepthAnythingV2Wrapper:
             logging.error("Ensure you have manually downloaded the HuggingFace weights into this directory.")
             raise e
 
-    def estimate_depth(self, image_path: str) -> np.ndarray:
+    def estimate_depth(self, image_input) -> np.ndarray:
         """
-        Estimates depth from an image.
+        Estimates depth from an image path or PIL Image.
         Returns a normalized numpy array where values are between 0 and 1.
         """
-        try:
-            image = Image.open(image_path).convert("RGB")
-        except Exception as e:
-            logging.error(f"Failed to open image at {image_path}: {e}")
-            raise
+        if isinstance(image_input, str):
+            try:
+                image = Image.open(image_input).convert("RGB")
+            except Exception as e:
+                logging.error(f"Failed to open image at {image_input}: {e}")
+                raise
+        else:
+            image = image_input
 
         # Run inference
         result = self.pipe(image)

@@ -27,16 +27,19 @@ class SAM2Segmenter:
             logging.error(f"Failed to load SAM 2 model from {settings.sam2_model_path}.")
             raise e
 
-    def segment_foreground(self, image_path: str) -> np.ndarray:
+    def segment_foreground(self, image_input) -> np.ndarray:
         """
         Segments the foreground object from the background.
         Returns a binary mask (numpy array) where foreground is 1 and background is 0.
         """
-        try:
-            image = Image.open(image_path).convert("RGB")
-        except Exception as e:
-            logging.error(f"Failed to open image at {image_path}: {e}")
-            raise
+        if isinstance(image_input, str):
+            try:
+                image = Image.open(image_input).convert("RGB")
+            except Exception as e:
+                logging.error(f"Failed to open image at {image_input}: {e}")
+                raise
+        else:
+            image = image_input
             
         image_np = np.array(image)
         

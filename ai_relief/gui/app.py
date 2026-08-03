@@ -68,11 +68,11 @@ def process_image(
     image_np = np.array(image)
 
     # 1. Depth Estimation
-    raw_depth = depth_estimator.estimate_depth(image_path)
+    raw_depth = depth_estimator.estimate_depth(image)
     
     # 2. Segmentation / Masking
     if remove_background:
-        mask = segmenter.segment_foreground(image_path)
+        mask = segmenter.segment_foreground(image)
     else:
         mask = np.ones(image_np.shape[:2], dtype=np.uint8)
     
