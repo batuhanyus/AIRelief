@@ -76,9 +76,12 @@ def process_image(
     else:
         mask = np.ones(image_np.shape[:2], dtype=np.uint8)
     
-    # 3. Multi-Stage Detail Enhancement
+    # 3. Compression (compress the macro global structure first)
+    compressed_depth = compressor.compress(raw_depth, mask)
+
+    # 4. Multi-Stage Detail Enhancement (layer details on top of the compressed base)
     # Face & Hair local enhancement
-    enhanced_depth = face_enhancer.enhance_faces(image_np, raw_depth, enhancement_strength=detail_strength)
+    enhanced_depth = face_enhancer.enhance_faces(image_np, compressed_depth, enhancement_strength=detail_strength)
     enhanced_depth = hair_enhancer.enhance_hair_details(image_np, enhanced_depth, mask, enhancement_strength=detail_strength)
     
     # Multi-Scale Laplacian & Structural Edge enhancement
@@ -90,8 +93,8 @@ def process_image(
         edge_sharpness=edge_sharpness
     )
     
-    # 4. Compression
-    compressed_depth = compressor.compress(enhanced_depth, mask)
+    # The enhanced depth is now our final compressed depth with details preserved
+    compressed_depth = enhanced_depth
     
     # 5. Heightmap Generation with Edge-Preserving Filter
     heightmap = heightmap_gen.generate(compressed_depth, smoothing_mode=smoothing_mode)
