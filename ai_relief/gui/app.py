@@ -125,7 +125,10 @@ def process_image(
     target_grid_dim = res_map.get(mesh_resolution, 512)
 
     # 6. Export to temporary GLB (for 3D viewer) and STL (for 3D printing download) files
-    temp_dir = tempfile.mkdtemp()
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    local_tmp = os.path.join(project_root, "tmp")
+    os.makedirs(local_tmp, exist_ok=True)
+    temp_dir = tempfile.mkdtemp(dir=local_tmp)
     output_glb_path = os.path.join(temp_dir, "bas_relief.glb")
     output_stl_path = os.path.join(temp_dir, "bas_relief.stl")
     

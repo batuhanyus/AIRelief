@@ -31,3 +31,6 @@ flagged/
 
 # macOS
 .DS_Store
+
+# Temporary files
+tmp/

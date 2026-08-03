@@ -10,8 +10,8 @@ if not exist ".venv\Scripts\activate.bat" goto :NO_VENV
 echo Activating virtual environment...
 call .venv\Scripts\activate.bat
 
-echo Starting AI Relief Application...
-python -m ai_relief.gui.app
+echo Starting AI Relief Application in Hot Reload Mode...
+gradio ai_relief/gui/app.py
 
 pause
 exit /b 0
