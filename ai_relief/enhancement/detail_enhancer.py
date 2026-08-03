@@ -19,7 +19,8 @@ class MultiScaleDetailEnhancer:
         depth_map: np.ndarray,
         mask: Optional[np.ndarray] = None,
         micro_detail_strength: float = 0.5,
-        edge_sharpness: float = 0.5
+        edge_sharpness: float = 0.5,
+        z_exaggeration: float = 1.0
     ) -> np.ndarray:
         """
         Enhances the depth map with fine micro-textures and sharp structural edges.
@@ -82,10 +83,16 @@ class MultiScaleDetailEnhancer:
         mid_injection = mid_high_pass * 0.25 * micro_detail_strength
         edge_injection = edge_detail * 0.45 * edge_sharpness
 
-        total_detail = (texture_injection + mid_injection + edge_injection) * mask_float
+        raw_detail = (texture_injection + mid_injection + edge_injection) * mask_float * z_exaggeration
 
-        # Add total detail into depth map and keep strictly bounded
-        enhanced_depth = np.clip(enhanced_depth + total_detail, 0.0, 1.0)
+        # Micro-blur to soften needles into printable bumps
+        smooth_detail = cv2.GaussianBlur(raw_detail, (3, 3), 0.5)
+        
+        # Soft clamp to restrict max spike height
+        total_detail = np.clip(smooth_detail, -0.05, 0.15)
+
+        # Add total detail into depth map and keep strictly bounded on the lower end, allow upper end to protrude for 3D printing
+        enhanced_depth = np.maximum(enhanced_depth + total_detail, 0.0)
 
         logging.info(f"Applied multi-scale detail enhancement (Micro: {micro_detail_strength:.2f}, Edges: {edge_sharpness:.2f}).")
         return enhanced_depth

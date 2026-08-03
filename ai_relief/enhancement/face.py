@@ -11,7 +11,7 @@ class FaceEnhancer:
             min_detection_confidence=0.5
         )
 
-    def enhance_faces(self, image_np: np.ndarray, depth_map: np.ndarray, enhancement_strength: float = 0.5) -> np.ndarray:
+    def enhance_faces(self, image_np: np.ndarray, depth_map: np.ndarray, enhancement_strength: float = 0.5, z_exaggeration: float = 1.0) -> np.ndarray:
         """
         Detects faces in the image and applies anatomical depth profiling 
         (nose elevation, eye socket recessing) and local contrast/sharpness enhancement 
@@ -78,10 +78,16 @@ class FaceEnhancer:
 
             # Combine anatomical dome with facial feature depth pop
             dome_boost = face_dome * 0.08 * enhancement_strength
-            detail_to_add = (high_freq * 0.35 + high_freq * edge_face * 0.25) * feather_mask * enhancement_strength
+            raw_detail = (high_freq * 0.35 + high_freq * edge_face * 0.1) * feather_mask * enhancement_strength * z_exaggeration
+            
+            # Micro-blur to soften needles into printable bumps
+            smooth_detail = cv2.GaussianBlur(raw_detail, (3, 3), 0.5)
+            
+            # Soft clamp to limit max physical spike height (e.g. max 15% of total depth outward, 5% inward)
+            detail_to_add = np.clip(smooth_detail, -0.05, 0.15)
             
             face_depth_region = face_depth_region + dome_boost + detail_to_add
-            face_depth_region = np.clip(face_depth_region, 0.0, 1.0)
+            face_depth_region = np.maximum(face_depth_region, 0.0)
 
             enhanced_depth[y_min:y_max, x_min:x_max] = face_depth_region
             

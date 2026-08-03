@@ -6,7 +6,7 @@ class HairEnhancer:
     def __init__(self):
         pass
 
-    def enhance_hair_details(self, image_np: np.ndarray, depth_map: np.ndarray, mask: np.ndarray, enhancement_strength: float = 0.3) -> np.ndarray:
+    def enhance_hair_details(self, image_np: np.ndarray, depth_map: np.ndarray, mask: np.ndarray, enhancement_strength: float = 0.3, z_exaggeration: float = 1.0) -> np.ndarray:
         """
         Extracts high-frequency details from the image (often representing hair or fine clothing textures) 
         and injects them into the depth map, constrained by the foreground mask.
@@ -41,11 +41,17 @@ class HairEnhancer:
             
         # Apply the details:
         # Details * Texture Mask (only applied where it's actually textured) * Subject Mask (only on foreground) * Strength
-        final_detail = high_pass * texture_mask * mask_float * enhancement_strength
+        raw_detail = high_pass * texture_mask * mask_float * enhancement_strength * z_exaggeration
+        
+        # Micro-blur to soften needles into printable bumps
+        smooth_detail = cv2.GaussianBlur(raw_detail, (3, 3), 0.5)
+        
+        # Soft clamp to restrict max spike height
+        final_detail = np.clip(smooth_detail, -0.05, 0.15)
         
         enhanced_depth += final_detail
         
-        # Keep depth map properly bounded
-        enhanced_depth = np.clip(enhanced_depth, 0.0, 1.0)
+        # Keep depth map properly bounded on the lower end, allow upper end to protrude for 3D printing
+        enhanced_depth = np.maximum(enhanced_depth, 0.0)
         
         return enhanced_depth

@@ -43,6 +43,7 @@ def process_image(
     max_depth,
     base_thickness,
     detail_strength,
+    detail_z_exaggeration,
     micro_detail_strength,
     edge_sharpness,
     apply_clahe,
@@ -92,8 +93,8 @@ def process_image(
 
     # 4. Multi-Stage Detail Enhancement (layer details on top of the compressed base)
     # Face & Hair local enhancement
-    enhanced_depth = face_enhancer.enhance_faces(image_np, compressed_depth, enhancement_strength=detail_strength)
-    enhanced_depth = hair_enhancer.enhance_hair_details(image_np, enhanced_depth, mask, enhancement_strength=detail_strength)
+    enhanced_depth = face_enhancer.enhance_faces(image_np, compressed_depth, enhancement_strength=detail_strength, z_exaggeration=detail_z_exaggeration)
+    enhanced_depth = hair_enhancer.enhance_hair_details(image_np, enhanced_depth, mask, enhancement_strength=detail_strength, z_exaggeration=detail_z_exaggeration)
     
     # Multi-Scale Laplacian & Structural Edge enhancement
     enhanced_depth = detail_enhancer.enhance_details(
@@ -101,7 +102,8 @@ def process_image(
         depth_map=enhanced_depth,
         mask=mask,
         micro_detail_strength=micro_detail_strength,
-        edge_sharpness=edge_sharpness
+        edge_sharpness=edge_sharpness,
+        z_exaggeration=detail_z_exaggeration
     )
     
     # The enhanced depth is now our final compressed depth with details preserved
@@ -194,6 +196,7 @@ with gr.Blocks(title="AI Relief") as demo:
                 
             with gr.Accordion("Multi-Scale Detail Enhancement", open=True):
                 apply_clahe = gr.Checkbox(label="Depth Contrast Enhancement (CLAHE)", value=False)
+                detail_z_exaggeration = gr.Slider(minimum=1.0, maximum=10.0, value=2.0, step=0.5, label="3D Print Detail Exaggeration (Z-Axis Multiplier)")
                 micro_detail_strength = gr.Slider(minimum=0.0, maximum=1.0, value=0.6, step=0.05, label="Micro-Texture Detail (Skin, Fabric, Patterns)")
                 edge_sharpness = gr.Slider(minimum=0.0, maximum=1.0, value=0.6, step=0.05, label="Edge & Contour Sharpness")
                 detail_strength = gr.Slider(minimum=0.0, maximum=1.0, value=0.5, step=0.1, label="Facial & Hair Feature Boost")
@@ -241,7 +244,8 @@ with gr.Blocks(title="AI Relief") as demo:
             input_image, 
             max_depth, 
             base_thickness, 
-            detail_strength, 
+            detail_strength,
+            detail_z_exaggeration,
             micro_detail_strength,
             edge_sharpness,
             apply_clahe,
