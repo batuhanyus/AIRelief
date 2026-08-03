@@ -1,5 +1,6 @@
 import gradio as gr
 import numpy as np
+import cv2
 import tempfile
 import os
 from PIL import Image
@@ -44,7 +45,10 @@ def process_image(
     detail_strength,
     micro_detail_strength,
     edge_sharpness,
+    apply_clahe,
     smoothing_mode,
+    unsharp_masking,
+    mesh_smoothing_iters,
     mesh_resolution,
     remove_background,
     preview_style,
@@ -69,6 +73,13 @@ def process_image(
 
     # 1. Depth Estimation
     raw_depth = depth_estimator.estimate_depth(image)
+    
+    if apply_clahe:
+        logging.info("Applying CLAHE to depth map for contrast enhancement.")
+        depth_uint16 = (raw_depth * 65535).astype(np.uint16)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        depth_uint16_clahe = clahe.apply(depth_uint16)
+        raw_depth = depth_uint16_clahe.astype(np.float32) / 65535.0
     
     # 2. Segmentation / Masking
     if remove_background:
@@ -97,7 +108,12 @@ def process_image(
     compressed_depth = enhanced_depth
     
     # 5. Heightmap Generation with Edge-Preserving Filter
-    heightmap = heightmap_gen.generate(compressed_depth, smoothing_mode=smoothing_mode)
+    heightmap = heightmap_gen.generate(
+        compressed_depth, 
+        smoothing_mode=smoothing_mode,
+        image_np=image_np,
+        apply_unsharp_mask=unsharp_masking
+    )
     
     # Parse mesh grid resolution choice
     res_map = {
@@ -120,7 +136,8 @@ def process_image(
             output_path=output_glb_path, 
             image_np=image_np, 
             preview_style=preview_style,
-            max_grid_dim=target_grid_dim
+            max_grid_dim=target_grid_dim,
+            mesh_smoothing_iters=mesh_smoothing_iters
         )
         # Export STL file for 3D printing
         exporter.export(
@@ -128,7 +145,8 @@ def process_image(
             output_path=output_stl_path,
             image_np=image_np,
             preview_style=preview_style,
-            max_grid_dim=target_grid_dim
+            max_grid_dim=target_grid_dim,
+            mesh_smoothing_iters=mesh_smoothing_iters
         )
         grid_desc = f"{target_grid_dim}px grid" if target_grid_dim else "Native image resolution grid"
         return output_glb_path, [output_stl_path, output_glb_path], f"Success! 3D Model & STL Export Generated at {grid_desc} using '{preview_style}' material on {settings.get_device_info()}."
@@ -172,18 +190,22 @@ with gr.Blocks(title="AI Relief") as demo:
                 remove_background = gr.Checkbox(label="Remove Background (Isolate Subject)", value=False)
                 
             with gr.Accordion("Multi-Scale Detail Enhancement", open=True):
+                apply_clahe = gr.Checkbox(label="Depth Contrast Enhancement (CLAHE)", value=False)
                 micro_detail_strength = gr.Slider(minimum=0.0, maximum=1.0, value=0.6, step=0.05, label="Micro-Texture Detail (Skin, Fabric, Patterns)")
                 edge_sharpness = gr.Slider(minimum=0.0, maximum=1.0, value=0.6, step=0.05, label="Edge & Contour Sharpness")
                 detail_strength = gr.Slider(minimum=0.0, maximum=1.0, value=0.5, step=0.1, label="Facial & Hair Feature Boost")
                 smoothing_mode = gr.Dropdown(
                     choices=[
+                        "Guided Filter (High Precision)",
                         "Sharp & Crisp (Bilateral)",
                         "Smooth Anti-Aliased",
                         "Raw (Unfiltered)"
                     ],
-                    value="Sharp & Crisp (Bilateral)",
+                    value="Guided Filter (High Precision)",
                     label="Surface Edge Smoothing Mode"
                 )
+                unsharp_masking = gr.Checkbox(label="Heightmap Unsharp Masking (Crisp physical edges)", value=True)
+                mesh_smoothing_iters = gr.Slider(minimum=0, maximum=10, value=2, step=1, label="Mesh Post-Smoothing (Laplacian Iterations)")
                 preview_style = gr.Dropdown(
                     choices=[
                         "Clay Sculpture",
@@ -219,7 +241,10 @@ with gr.Blocks(title="AI Relief") as demo:
             detail_strength, 
             micro_detail_strength,
             edge_sharpness,
+            apply_clahe,
             smoothing_mode,
+            unsharp_masking,
+            mesh_smoothing_iters,
             mesh_resolution,
             remove_background, 
             preview_style,

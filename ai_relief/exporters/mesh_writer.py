@@ -107,7 +107,8 @@ class MeshExporter:
         output_path: str,
         image_np: Optional[np.ndarray] = None,
         preview_style: str = "clay",
-        max_grid_dim: Optional[int] = 512
+        max_grid_dim: Optional[int] = 512,
+        mesh_smoothing_iters: int = 0
     ):
         """
         Generates the mesh and saves it to the specified format (GLB, OBJ, STL, etc.)
@@ -143,6 +144,10 @@ class MeshExporter:
 
         logging.info("Triangulating heightmap into watertight mesh...")
         mesh = self._generate_grid_mesh(heightmap_processed, vertex_colors=all_vertex_colors)
+        
+        if mesh_smoothing_iters > 0:
+            logging.info(f"Applying {mesh_smoothing_iters} iterations of Laplacian smoothing to mesh geometry...")
+            trimesh.smoothing.filter_laplacian(mesh, iterations=mesh_smoothing_iters)
         
         logging.info(f"Saving mesh to {output_path}...")
         file_ext = output_path.split('.')[-1].lower()
